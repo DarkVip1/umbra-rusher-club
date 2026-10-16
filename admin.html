@@ -1,86 +1,80 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>URC Control Panel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>URC Admin</title>
 <style>
-*{box-sizing:border-box}
-body{margin:0;background:#080b12;color:#eef3ff;font:15px Arial;padding:20px}
-main{max-width:700px;margin:auto}
-h1{letter-spacing:2px}
-p{color:#aab6c9}
-section{background:#121a27;padding:18px;border-radius:14px;margin:18px 0}
-input,textarea,button{width:100%;padding:12px;margin:7px 0;border-radius:8px}
+body{margin:0;background:#080b12;color:#fff;font:16px Arial;padding:20px}
+main{max-width:650px;margin:auto}
+section{background:#121a27;padding:18px;border-radius:12px;margin:18px 0}
+input,textarea,button{box-sizing:border-box;width:100%;padding:12px;margin:7px 0;border-radius:8px}
 input,textarea{background:#080b12;color:white;border:1px solid #354158}
 button{background:#dcecff;border:0;font-weight:bold}
-.item{padding:12px;border:1px solid #354158;border-radius:9px;margin:10px 0;overflow-wrap:anywhere}
-.item img{max-width:100%;border-radius:8px}
-small{color:#aab6c9}
+article{border:1px solid #354158;padding:12px;margin:10px 0;border-radius:8px}
 </style>
 </head>
 <body>
 <main>
-<h1>URC / CONTROL</h1>
-<p>Panel lokal untuk menyusun berita dan galeri.</p>
-<p><b>Catatan:</b> data disimpan di browser ini saja, belum tampil di website publik.</p>
-
+<h1>URC / ADMIN</h1>
+<p>Berita tersimpan di database bersama.</p>
 <section>
 <h2>Tambah berita</h2>
 <input id="title" placeholder="Judul berita">
 <textarea id="body" placeholder="Isi berita"></textarea>
-<button onclick="addNews()">Simpan berita</button>
-<div id="news"></div>
+<button id="add">Publikasikan berita</button>
+<p id="status"></p>
 </section>
-
 <section>
-<h2>Tambah foto galeri</h2>
-<input id="caption" placeholder="Keterangan foto">
-<input id="photo" type="file" accept="image/*">
-<button onclick="addPhoto()">Simpan foto</button>
-<div id="gallery"></div>
-</section>
-
-<section>
-<h2>Warna latar</h2>
-<input id="bg" type="color" value="#080b12">
-<button onclick="changeBg()">Terapkan latar</button>
+<h2>Daftar berita</h2>
+<div id="list">Memuat berita...</div>
 </section>
 </main>
-<script>
+<script type="module">
+import {createClient} from
+'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const db=createClient(
+  'https://yzpzylbjowcxrimdxypb.supabase.co/rest/v1/',
+  'sb_publishable_air6Cb3zpPgckbPIH4IhEQ_CTlwIh24'
+);
 const $=id=>document.getElementById(id);
-let news=JSON.parse(localStorage.getItem('urc_news')||'[]');
-let photos=JSON.parse(localStorage.getItem('urc_photos')||'[]');
+const safe=s=>String(s).replace(/[&<>"']/g,c=>({
+  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+}[c]));
 
-function safe(s){return String(s).replace(/[&<>"']/g,c=>({
-'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-}[c]))}
+async function load(){
+  const {data,error}=await db.from('urc_news')
+    .select('id,title,body,created_at')
+    .order('created_at',{ascending:false});
+  if(error){$('list').textContent='Gagal memuat: '+error.message;return}
+  $('list').innerHTML=data.map(n=>`
+    <article><b>${safe(n.title)}</b><p>${safe(n.body)}</p>
+    <button data-id="${n.id}">Hapus</button></article>
+  `).join('')||'Belum ada berita.';
+}
 
-function render(){
-$('news').innerHTML=news.map((n,i)=>`<div class="item"><b>${safe(n.title)}</b><p>${safe(n.body)}</p><button onclick="delNews(${i})">Hapus</button></div>`).join('');
-$('gallery').innerHTML=photos.map((p,i)=>`<div class="item"><img src="${p.src}" alt=""><p>${safe(p.caption)}</p><button onclick="delPhoto(${i})">Hapus</button></div>`).join('');
-}
-function addNews(){
-let title=$('title').value.trim(),body=$('body').value.trim();
-if(!title||!body)return alert('Isi judul dan berita dulu.');
-news.unshift({title,body});localStorage.setItem('urc_news',JSON.stringify(news));
-$('title').value='';$('body').value='';render();
-}
-function delNews(i){news.splice(i,1);localStorage.setItem('urc_news',JSON.stringify(news));render()}
-function addPhoto(){
-let f=$('photo').files[0];if(!f)return alert('Pilih foto dulu.');
-if(f.size>700000)return alert('Pilih foto maksimal 700 KB.');
-let r=new FileReader();r.onload=()=>{
-photos.unshift({caption:$('caption').value,src:r.result});
-try{localStorage.setItem('urc_photos',JSON.stringify(photos))}
-catch(e){photos.shift();return alert('Penyimpanan browser penuh.')}
-$('caption').value='';$('photo').value='';render();
-};r.readAsDataURL(f);
-}
-function delPhoto(i){photos.splice(i,1);localStorage.setItem('urc_photos',JSON.stringify(photos));render()}
-function changeBg(){document.body.style.background=$('bg').value;localStorage.setItem('urc_bg',$('bg').value)}
-document.body.style.background=localStorage.getItem('urc_bg')||'#080b12';
-render();
+$('add').onclick=async()=>{
+  const title=$('title').value.trim();
+  const body=$('body').value.trim();
+  if(!title||!body){$('status').textContent='Isi judul dan berita dulu.';return}
+  $('add').disabled=true;
+  const {error}=await db.from('urc_news').insert([{title,body}]);
+  $('add').disabled=false;
+  $('status').textContent=error?'Gagal: '+error.message:'Berita tersimpan!';
+  if(!error){$('title').value='';$('body').value='';await load()}
+};
+
+$('list').onclick=async e=>{
+  const id=e.target.dataset.id;
+  if(!id)return;
+  if(!confirm('Hapus berita ini?'))return;
+  const {error}=await db.from('urc_news').delete().eq('id',id);
+  if(error)alert('Gagal menghapus: '+error.message);
+  else await load();
+};
+load();
 </script>
 </body>
 </html>
