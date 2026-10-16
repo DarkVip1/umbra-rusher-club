@@ -54,9 +54,9 @@
       });
 
       if (error) {
-        status.textContent = "Login gagal. Periksa email dan password.";
-        return;
-      }
+  status.textContent = error.message;
+  return;
+}
 
       await supabase.auth.signOut();
       status.textContent =
