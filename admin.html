@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Login — URC</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;
+      background:#080b12;color:#fff;font-family:Arial,sans-serif;padding:20px}
+    main{width:100%;max-width:380px;background:#111722;padding:28px;
+      border:1px solid #283346;border-radius:16px}
+    h1{margin-top:0;font-size:27px}
+    p{color:#aab6c9;font-size:14px}
+    input,button{width:100%;padding:13px;margin-top:12px;
+      border-radius:8px;font-size:15px}
+    input{background:#080b12;border:1px solid #354158;color:white}
+    button{background:#dcecff;border:0;font-weight:bold}
+    #status{overflow-wrap:anywhere}
+  </style>
+</head>
+<body>
+<main>
+  <h1>URC / ADMIN</h1>
+  <p>Masuk untuk pengelola UMBRA RUSHER CLUB.</p>
+  <form id="login">
+    <input id="email" type="email" placeholder="Email admin"
+      autocomplete="username" required>
+    <input id="password" type="password" placeholder="Password"
+      autocomplete="current-password" required>
+    <button type="submit">LOGIN</button>
+  </form>
+  <p id="status" role="status"></p>
+</main>
+
+<script type="module">
+  import { createClient } from
+    "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+  const SUPABASE_URL = "https://yzpzylbjowcxrimdxypb.supabase.co/rest/v1/";
+  const SUPABASE_KEY = "sb_publishable_air6Cb3zpPgckbPIH4IhEQ_CTlwIh24";
+
+  const status = document.getElementById("status");
+  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  document.getElementById("login").addEventListener("submit",
+    async (event) => {
+      event.preventDefault();
+      status.textContent = "Memeriksa akun...";
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: document.getElementById("email").value.trim(),
+        password: document.getElementById("password").value
+      });
+
+      if (error) {
+        status.textContent = "Login gagal. Periksa email dan password.";
+        return;
+      }
+
+      await supabase.auth.signOut();
+      status.textContent =
+        "Login berhasil diuji. Panel admin belum dibuat.";
+    });
+</script>
+</body>
+</html>
